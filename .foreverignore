@@ -1,0 +1,9 @@
+node_modules/*
+price_manager/node_modules/*
+
+*.json
+.env
+.gitignore
+README.md
+LICENSE
+template.env
