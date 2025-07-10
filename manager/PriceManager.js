@@ -9,6 +9,8 @@ const MAX_DEVIATION_RATIO= 2.5;
 const RECOVERY_FORCE = 0.025;
 const STABILIZATION_FORCE = 0.05;
 
+const MAX_LOG_SIZE = 1024 * 1024 * 10;
+
 const fs   = require('fs');
 
 const { join } = require('path');
@@ -20,6 +22,41 @@ if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
 }
 
+const checkAndRotateLog = () => {
+    if (!fs.existsSync(logFilePath)) return;
+
+    const stats = fs.statSync(logFilePath);
+    if (stats.size > MAX_LOG_SIZE) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const archiveFileName = `price_${timestamp}.log.gz`;
+        const archivePath = join(logDir, 'archive', archiveFileName);
+
+        // 아카이브 디렉토리 생성
+        const archiveDir = join(logDir, 'archive');
+        if (!fs.existsSync(archiveDir)) {
+            fs.mkdirSync(archiveDir, { recursive: true });
+        }
+
+        try {
+            // 기존 로그 파일을 압축하여 아카이브
+            const readStream = fs.createReadStream(logFilePath);
+            const writeStream = fs.createWriteStream(archivePath);
+            const gzip = createGzip();
+
+            readStream.pipe(gzip).pipe(writeStream);
+
+            writeStream.on('finish', () => {
+                // 압축 완료 후 기존 파일 삭제
+                fs.unlinkSync(logFilePath);
+                console.log(`로그 파일 압축 완료: ${archiveFileName}`);
+            });
+
+        } catch (error) {
+            console.error('로그 파일 압축 중 오류:', error);
+        }
+    }
+};
+
 const originalConsoleLog = console.log;
 
 console.log = (...args) => {
@@ -30,8 +67,13 @@ console.log = (...args) => {
 
     const logEntry = `[${timestamp}] ${message}\n`;
 
+    // 로그 크기 체크 및 로테이션
+    checkAndRotateLog();
+
+    // 파일에 기록
     fs.appendFileSync(logFilePath, logEntry);
 
+    // 콘솔에도 출력
     originalConsoleLog(...args);
 };
 
@@ -40,6 +82,7 @@ const StockLabels = require('../data/stock_labels.json').labels;
 
 require('dotenv').config({ path: join(__dirname, '..', '.env') });
 const OpenAI = require('openai');
+const {createGzip} = require("node:zlib");
 const openai = new OpenAI({
     organization: 'org-obV9Q057NQYZNa7UINwNIhYF',
     project: 'proj_eGkp1zyWEeDg7wbtZhJMlQ6o',
@@ -113,7 +156,7 @@ const marketStabilization = (stockData) => {
     }
 
     // 시장 평균이 너무 높으면 전체적인 하락 압력 가하기
-    if (marketAverage > MARKET_AVERAGE_TARGET * 2) {
+    if (marketAverage > MARKET_AVERAGE_TARGET * 3) {
         console.log(`시장 안정화 작동: 평균 가격 ${marketAverage.toFixed(2)} → 하락 압력 적용`);
 
         for (const stock of Object.keys(stockData)) {
