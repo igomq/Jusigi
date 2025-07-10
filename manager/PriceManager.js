@@ -12,6 +12,29 @@ const STABILIZATION_FORCE = 0.05;
 const fs   = require('fs');
 
 const { join } = require('path');
+
+const logFilePath = join(__dirname, '../logs/price.log');
+
+const logDir = join(__dirname, '../logs');
+if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+}
+
+const originalConsoleLog = console.log;
+
+console.log = (...args) => {
+    const timestamp = new Date().toISOString();
+    const message = args.map(arg =>
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' ');
+
+    const logEntry = `[${timestamp}] ${message}\n`;
+
+    fs.appendFileSync(logFilePath, logEntry);
+
+    originalConsoleLog(...args);
+};
+
 const OriginStockData = require('../data/stock_data.json');
 const StockLabels = require('../data/stock_labels.json').labels;
 
