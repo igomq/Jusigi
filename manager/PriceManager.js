@@ -1,8 +1,9 @@
 const UPDATE_RATE = 1000;
 
 const MAX_DATA_SAVING = 250;
-const MAX_STOCK_VALUE = 200000;
+const MARKET_AVERAGE_TARGET = 45000;
 const MIN_STOCK_THRESHOLD = 6000;
+const MAX_STOCK_THRESHOLD = 1000000; // 최대 주식 가격
 const MAX_DEVIATION_RATIO= 2.5;
 
 const RECOVERY_FORCE = 0.025;
@@ -48,8 +49,6 @@ const saveNewsHistory = async (newsData) => {
     console.log(`뉴스 히스토리 저장: ${newsData.stock} (총 ${newsHistory.length}개)`);
 };
 const marketStabilization = (stockData) => {
-    const MARKET_AVERAGE_TARGET = 45000; // 시장 평균 목표가
-
     const prices = [], stockNames = [];
 
     // 시장 평균 계산
@@ -84,6 +83,27 @@ const marketStabilization = (stockData) => {
             const stabilizationBoost = Math.max(newPrice, MIN_STOCK_THRESHOLD); // 최소 가격 보장
 
             console.log(`${stock}: 시장 안정화 상승 (${currentPrice.toFixed(0)} → ${stabilizationBoost.toFixed(0)})`);
+
+            if (stockData[stock].history.length >= MAX_DATA_SAVING) stockData[stock].history.shift();
+            stockData[stock].history.push(stabilizationBoost);
+        }
+    }
+
+    // 시장 평균이 너무 높으면 전체적인 하락 압력 가하기
+    if (marketAverage > MARKET_AVERAGE_TARGET * 2) {
+        console.log(`시장 안정화 작동: 평균 가격 ${marketAverage.toFixed(2)} → 하락 압력 적용`);
+
+        for (const stock of Object.keys(stockData)) {
+            if (!stockData[stock].history || stockData[stock].history.length === 0) continue;
+
+            const currentPrice = stockData[stock].history.at(-1);
+            const deviationFromAverage = currentPrice - marketAverage;
+            const deviationRatio = Math.abs(deviationFromAverage) / marketAverage;
+            const adjustmentForce = currentPrice * (0.05 + deviationRatio * 0.35); // 5% ~ 35% 사이의 감소
+            const newPrice = Math.floor(currentPrice - adjustmentForce);
+            const stabilizationBoost = Math.max(newPrice, MIN_STOCK_THRESHOLD); // 최소 가격 보장
+
+            console.log(`${stock}: 시장 안정화 하락 (${currentPrice.toFixed(0)} → ${stabilizationBoost.toFixed(0)})`);
 
             if (stockData[stock].history.length >= MAX_DATA_SAVING) stockData[stock].history.shift();
             stockData[stock].history.push(stabilizationBoost);
@@ -170,7 +190,7 @@ module.exports = async () => {
     let info = {count: 0, del: false}
 
     intervalId = setInterval(async () => {
-        if (stabilizationCounter === UPDATE_RATE / 1000 * 10) {
+        if (stabilizationCounter === 10) {
             stabilizationCounter = 0;
             let stabilized = marketStabilization(OriginStockData);
 
@@ -307,6 +327,19 @@ module.exports = async () => {
                             if (Math.random() < 0.7) { // 70% 확률로 추가 상승
                                 newPrice += recoveryBonus;
                                 console.log(`${stock}: 저가 회복 보너스 적용 (+${recoveryBonus.toFixed(2)})`);
+                            }
+                        }
+
+                        if (newPrice > MAX_STOCK_THRESHOLD) {
+                            // 최대 가격 초과 방지
+                            newPrice = MAX_STOCK_THRESHOLD;
+                            console.log(`${stock}: 최대 가격 보호 작동 (${last.toFixed(2)} → ${newPrice.toFixed(2)})`);
+                        } else if (newPrice > MAX_STOCK_THRESHOLD * 0.92) {
+                            // 최대 가격 근처에서는 하락 확률 증가
+                            const stabilizationBonus = MAX_STOCK_THRESHOLD * STABILIZATION_FORCE * (Math.random() * 0.75 + 0.25).toFixed(1);
+                            if (Math.random() < 0.7) { // 70% 확률로 추가 하락
+                                newPrice -= stabilizationBonus;
+                                console.log(`${stock}: 고가 안정화 패널티 적용 (-${stabilizationBonus.toFixed(2)})`);
                             }
                         }
 

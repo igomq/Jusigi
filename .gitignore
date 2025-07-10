@@ -4,6 +4,7 @@ node_modules/
 commands/template
 
 data/stock_data.json
+data/news/*.json
 .env
 package-lock.json
 

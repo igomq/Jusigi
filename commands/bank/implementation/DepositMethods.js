@@ -31,7 +31,7 @@ const GetDepositInterestRateByUserCreditAndDue = (credit, due) => {
         default: rate = 0.00018 * Math.pow(due, 2); break;
     }
 
-    return Math.min(rate, GetDepositInterestRateLimitByUserCredit(credit)).toFixed(5);
+    return Math.min(rate, 0.01 * GetDepositInterestRateLimitByUserCredit(credit)).toFixed(5);
 }
 
 module.exports.GetSavingsInterestRateByUserCredit = GetSavingsInterestRateByUserCredit;

@@ -37,7 +37,12 @@ module.exports.command = async (client, interaction, user) => {
     }
 
     str += '```';
-    await interaction.reply(str += `\n다음 갱신까지: \`${((Date.now() - Number(D)) / 1000).toFixed(0)}초\``);
+    const UPDATE_INTERVAL = 60 * 1000;
+
+    const timeSinceLastUpdate = Date.now() - Number(D);
+    const timeUntilNextUpdate = UPDATE_INTERVAL - (timeSinceLastUpdate % UPDATE_INTERVAL);
+
+    await interaction.reply(str += `\n다음 갱신까지: \`${(timeUntilNextUpdate / 1000).toFixed(0)}초\``);
 
 }
 module.exports.commandName = '주가표'
