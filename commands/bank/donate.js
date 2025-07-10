@@ -27,6 +27,7 @@ module.exports.command = async (client, interaction, user) => {
     // 기부 처리
     const userdata = await User.GetUser(user.id);
     userdata.purse -= amount;
+    userdata.donation += amount;
     await userdata.apply();
 
     return reply(interaction, { content: `기부가 완료되었습니다. 기부 금액: ${commaByThree(amount)}원` });

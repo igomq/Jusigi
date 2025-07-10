@@ -264,6 +264,7 @@ module.exports = async () => {
                 OriginStockData[stock].history = stabilized[stock].history;
             }
         }
+        ++stabilizationCounter;
 
         if (newsTime <= 0) {
             newsTime = 10;
@@ -420,7 +421,7 @@ module.exports = async () => {
         }
 
         --newsTime;
-        ++stabilizationCounter;
+
         OriginStockData.lastUpdate = Date.now();
         fs.writeFileSync(join(__dirname, '../', 'data', 'stock_data.json'),
             JSON.stringify(OriginStockData, null, 4));

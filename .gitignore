@@ -9,3 +9,4 @@ data/news/*.json
 package-lock.json
 
 *.log
+/data/news/
