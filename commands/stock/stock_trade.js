@@ -45,8 +45,8 @@ require('../../data/stock_labels.json').labels
 const GetTaxRateByUserCredit = (credit) => {
     switch (credit) {
         case 1: return 0;
-	case 2: return 0.5;
-	default: return 1;
+        case 2: return 0.5;
+        default: return 1;
     }
 }
 
@@ -121,7 +121,7 @@ module.exports.command = async (client, interaction, user) => {
         if (amount === '올인') amount = stockData.amount;
         amount = parseInt(amount);
 
-	const taxRate = 0.1 * GetTaxRateByUserCredit(userModel.credit);
+        const taxRate = 0.1 * GetTaxRateByUserCredit(userModel.credit);
 
         // Update user purse
         userModel.purse = Purse + (CUR * amount * (1 - taxRate));

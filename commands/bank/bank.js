@@ -112,7 +112,7 @@ module.exports.command = async (client, interaction, user) => {
                     {name: '\u200b', value: '\u200b'},
                     { name: '대출 이자율', value: `${LoanInterestRate}%`, inline: true },
                     { name: '대출 한도', value: `${commaByThree(LoanInterestLimit)}시기`, inline: true },
-                    { name: '보통 예금 이자율', value: `${SavingsInterestRate}%` },
+                    { name: '보통 예금 이자율', value: `${100 * SavingsInterestRate}%` },
                     { name: '정기 예금 이자율', value: `${DepositInterestRate} X (예금일수)²% (최대 ${DepositInterestRateMax}%)` }
                 )
                 .setFooter({ text: '주시기', iconURL: client.user.displayAvatarURL() })

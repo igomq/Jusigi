@@ -12,9 +12,9 @@ const GetSavingsInterestRateByUserCredit = (credit) => {
 
 const GetDepositTaxRateByUserCredit = (credit) => {
     switch (credit) {
-	case 1: return 0;
-	case 2: return 7.5;
-	default: return 15;
+        case 1: return 0;
+        case 2: return 7.5;
+        default: return 15;
     }
 }
 
