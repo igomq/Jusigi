@@ -10,6 +10,14 @@ const GetSavingsInterestRateByUserCredit = (credit) => {
     return rate;
 }
 
+const GetDepositTaxRateByUserCredit = (credit) => {
+    switch (credit) {
+	case 1: return 0;
+	case 2: return 7.5;
+	default: return 15;
+    }
+}
+
 const GetDepositInterestRateLimitByUserCredit = (credit) => {
     let limit;
     switch (credit) {
@@ -37,3 +45,4 @@ const GetDepositInterestRateByUserCreditAndDue = (credit, due) => {
 module.exports.GetSavingsInterestRateByUserCredit = GetSavingsInterestRateByUserCredit;
 module.exports.GetDepositInterestRateLimitByUserCredit = GetDepositInterestRateLimitByUserCredit;
 module.exports.GetDepositInterestRateByUserCreditAndDue = GetDepositInterestRateByUserCreditAndDue;
+module.exports.GetDepositTaxRateByUserCredit = GetDepositTaxRateByUserCredit;
