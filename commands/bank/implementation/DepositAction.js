@@ -3,7 +3,7 @@ const User = require("../../../models/User");
 
 const moment = require("moment");
 
-const { GetSavingsInterestRateByUserCredit, GetDepositInterestRateByUserCreditAndDue } = require("./DepositMethods");
+const { GetDepositTaxRateByUserCredit, GetSavingsInterestRateByUserCredit, GetDepositInterestRateByUserCreditAndDue } = require("./DepositMethods");
 
 module.exports = async (client, interaction, user, pop = false) => {
     const style = interaction.options.getString('종류');
@@ -21,6 +21,7 @@ module.exports = async (client, interaction, user, pop = false) => {
             if (amount <= 0)
                 return replyEphemeral(interaction, {content: '인출 가능한 보통 예금이 없습니다.'});
 
+            // let taxRate = GetDepositTaxRayeByUserCredit(author.credit);
             let final = amount + amount * interest_rate * moment().diff(deposit.savings.timestamp, 'days');
             author.purse += final;
 
@@ -41,7 +42,8 @@ module.exports = async (client, interaction, user, pop = false) => {
             if (amount <= 0)
                 return replyEphemeral(interaction, {content: '인출 가능한 정기 예금이 없습니다.'});
 
-            let final = Math.floor(amount * Math.pow(1 + interest_rate, due));
+            let taxRate = GetDepositTaxRateByUserCredit(author.credit);
+            let final = Math.floor(amount * Math.pow(1 + interest_rate, due)) * (1 - 0.01 * taxRate);
             author.purse += final;
             deposit.deposit.amount = 0;
             deposit.deposit.due = 0;

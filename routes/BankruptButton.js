@@ -12,6 +12,7 @@ module.exports.command = async (client, interaction, data) => {
 
     user.credit = 3;
     user.purse = 70000;
+    user.creditModifiedAt = new Date();
 
     await user.apply();
 

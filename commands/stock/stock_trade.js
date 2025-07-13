@@ -42,6 +42,14 @@ require('../../data/stock_labels.json').labels
 require('../../data/stock_labels.json').labels
     .forEach(cat => { data.options[1].options[0].addChoices({name: cat, value: cat}); })
 
+const GetTaxRateByUserCredit = (credit) => {
+    switch (credit) {
+        case 1: return 0;
+        case 2: return 0.5;
+        default: return 1;
+    }
+}
+
 module.exports.data = data
 module.exports.command = async (client, interaction, user) => {
     if (!await User.isUserExists(user.id))
@@ -113,8 +121,10 @@ module.exports.command = async (client, interaction, user) => {
         if (amount === '올인') amount = stockData.amount;
         amount = parseInt(amount);
 
+        const taxRate = 0.1 * GetTaxRateByUserCredit(userModel.credit);
+
         // Update user purse
-        userModel.purse = Purse + (CUR * amount);
+        userModel.purse = Purse + (CUR * amount * (1 - taxRate));
 
         // Update stock holdings
         const remainingShares = stockData.amount - amount;
