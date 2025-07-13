@@ -20,6 +20,7 @@ module.exports = async(client) => {
         const scripts = readdirSync(join(__dirname, '../', 'commands', `${category.name}`))
         for (const file of scripts) {
             if (!file.endsWith('.js')) continue;
+            if (file.startsWith('_')) continue; // Skip hidden files
             const command = require(join(__dirname, '../', 'commands', `${category.name}`, `${file}`))
             console.log(gray(`-- Loading command ${command.data.name}`))
 
