@@ -1,6 +1,6 @@
 const {query} = require("../util/query_db");
 module.exports.command = async (client, interaction, data) => {
-    const originInteraction = await require('../commands/user/bankrupt').activities.get(data.userId);
+    const originInteraction = activities.get(`BK-${data.userId}`);
 
     if (!data.action) {
         await originInteraction.deleteReply();
@@ -21,6 +21,7 @@ module.exports.command = async (client, interaction, data) => {
     await query(`DELETE FROM deposit WHERE id = ${data.userId}`);
 
     await originInteraction.deleteReply();
+    activities.delete(`BK-${data.userId}`);
     return await interaction.reply({
         content: `${interaction.user}님의 파산 신청이 완료되었습니다.\n신용 등급은 3등급으로 재조정되었으며, 잔액은 7만시기로 재조정되었습니다. 기존 모든 이력은 말소되었습니다.`,
         flags: 64

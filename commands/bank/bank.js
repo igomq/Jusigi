@@ -97,6 +97,7 @@ module.exports.command = async (client, interaction, user) => {
         default: {
             const userdata = await User.GetUser(user.id);
             const userstock = await Stock.GetUser(user.id);
+            const casino = await require('../../models/Casino').GetUser(user.id);
 
             const LoanInterestRate = GetLoanInterestRateByUserCredit(userdata.credit);
             const LoanInterestLimit = GetLoanLimitWithCreditAndProperty(userdata.credit, { stock: userstock.sum, purse: userdata.purse });
@@ -113,7 +114,11 @@ module.exports.command = async (client, interaction, user) => {
                     { name: '대출 이자율', value: `${LoanInterestRate}%`, inline: true },
                     { name: '대출 한도', value: `${commaByThree(LoanInterestLimit)}시기`, inline: true },
                     { name: '보통 예금 이자율', value: `${100 * SavingsInterestRate}%` },
-                    { name: '정기 예금 이자율', value: `${DepositInterestRate} X (예금일수)²% (최대 ${DepositInterestRateMax}%)` }
+                    { name: '정기 예금 이자율', value: `${DepositInterestRate} X (예금일수)²% (최대 ${DepositInterestRateMax}%)` },
+                    { name: '\u200b', value: '\u200b' },
+                    { name: '최근 카지노 이용일', value: `${new Date(casino.lastPlayed).toLocaleDateString()}`, inline: true },
+                    { name: '카지노 이익 (신용등급 변동 이후)', value: `${commaByThree(casino.profitSum)}시기`, inline: true },
+                    { name: '기부 금액', value: `${commaByThree(userdata.donation)}시기` },
                 )
                 .setFooter({ text: '주시기', iconURL: client.user.displayAvatarURL() })
                 .setTimestamp();

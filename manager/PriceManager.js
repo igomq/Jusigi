@@ -235,14 +235,25 @@ const queryBody = (stock) => {
         model: "gpt-4.1-nano",
         messages: [
             { role: 'system', content: 'You are a journalist writing an article about the stock market.' },
-            { role: 'user', content: `${stock} 이라는 주식에 대한 재미있는 뉴스를 "매우 긍정"/"긍정"/"부정"/"매우 부정"의 4단계로 중 **랜덤하게** 4개의 단계를 골라서 제목과 요약을 JSON으로만 작성해서 보내.\n긍정만 4개가 뽑혀도 되고, 매우 부정만 4개 뽑혀도 돼. 랜덤하게 단계를 골라줘.\n` +
-                    '예시) { "매우 긍정": {"제목":"내용", "요약":"내용"}, "매우 긍정": {"제목":"내용", "요약":"내용"}, "긍정": {"제목":"내용", "요약":"내용"}, "매우 부정": {"제목":"내용", "요약":"내용""} }\n4개 전부 작성해줘 보내줘.\n' +
-                    '마크업 없이 JSON으로만 보내줘' }
+            { role: 'user', content: `Write four interesting news about the stock ${stock}. Each news should be assigned randomly to one of the four stages: "매우 긍정", "긍정", "부정", or "매우 부정".\n` +
+                    'You can pick any stage multiple times, so all four pieces of news could be "긍정", or three could be "매우 부정" and one "매우 긍정", etc. MAKE SURE ALL 4^4 CASES ARE POSSIBLE.\n' +
+                    'Write realistic, but concise titles and summaries.\n' +
+                    'Return ONLY the following JSON format (NO markdown):\n' +
+                    '[\n' +
+                    '  {"단계": "긍정", "제목": "내용", "요약": "내용"},\n' +
+                    '  {"단계": "매우 부정", "제목": "내용", "요약": "내용"},\n' +
+                    '  {"단계": "긍정", "제목": "내용", "요약": "내용"},\n' +
+                    '  {"단계": "부정", "제목": "내용", "요약": "내용"}\n' +
+                    ']\n' +
+                    'Answer in Korean and change only the news content and 단계, don\'t change the format.\n' +
+                    'Make sure the number of news is exactly 4, and each news has a unique title and summary.\n' +
+                    'Only include Korean or English characters in the title and summary, no other languages.\n'
+            }
         ]
     }
 }
 
-let newsStock = '', newsInfluence = 0, remainNewsEffect = 0, newsTime = 0;
+let newsStock = '곰큐항공', newsInfluence = 0, remainNewsEffect = 0, newsTime = 0;
 let isNewsActive = false;
 
 let stabilizationCounter = 0;
@@ -296,10 +307,11 @@ module.exports = async () => {
                     await write(newsFilePath, completion.choices[0].message.content);
                 }
 
-                const newsData = await read(newsFilePath); // 여기도 수정
+                const newsData = await read(newsFilePath);
                 const news = JSON.parse(newsData);
-                const sentiment = Object.keys(news)[Math.floor(Math.random() * Object.keys(news).length)];
+                const idx = Math.floor(Math.random() * news.length), content = news[idx];
 
+                const sentiment = content["단계"], title = content["제목"], summary = content["요약"];
                 switch (sentiment) {
                     case "매우 긍정":
                         newsInfluence = 2;
@@ -320,13 +332,13 @@ module.exports = async () => {
                 const newsHistoryData = {
                     stock: newsStock,
                     sentiment: sentiment,
-                    title: news[sentiment]["제목"],
-                    summary: news[sentiment]["요약"],
+                    title: title,
+                    summary: summary,
                     createdAt: Date.now()
                 }
                 await saveNewsHistory(newsHistoryData);
 
-                delete news[sentiment];
+                news.splice(idx, 1);
                 await write(newsFilePath, JSON.stringify(news, null, 4));
                 isNewsActive = true;
                 console.log(`뉴스 처리 완료: ${newsStock}, 영향도: ${newsInfluence}`);

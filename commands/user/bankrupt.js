@@ -38,9 +38,8 @@ module.exports.command = async (client, interaction, user) => {
                 .setStyle(ButtonStyle.Secondary)
         )
 
-    this.activities.set(user.id, interaction);
+    activities.set(`BK-${user.id}`, interaction);
 
     await replyEphemeral(interaction, { embeds: [Embed], components: [ButtonRow] })
 }
-module.exports.activities = new Collection();
 module.exports.commandName = '파산신청'

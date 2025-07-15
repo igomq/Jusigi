@@ -16,13 +16,13 @@ module.exports.commandName = '기부';
 const User = require('../../models/User');
 module.exports.command = async (client, interaction, user) => {
     if (!await User.isUserExists(user.id))
-        return interaction.reply({ content: '사용자 정보가 없습니다. 먼저 `/가입` 명령어를 사용해주세요.', flags: MessageFlags.Ephemeral });
+        return await interaction.reply({ content: '사용자 정보가 없습니다. 먼저 `/가입` 명령어를 사용해주세요.', flags: MessageFlags.Ephemeral });
 
     const amount = interaction.options.getInteger('금액');
     if (amount <= 0)
-        return replyEphemeral(interaction, { content: '기부 금액은 0보다 커야 합니다.' });
+        return await replyEphemeral(interaction, { content: '기부 금액은 0보다 커야 합니다.' });
     if (user.purse < amount)
-        return replyEphemeral(interaction, { content: '기부 금액이 보유 금액보다 큽니다.' });
+        return await replyEphemeral(interaction, { content: '기부 금액이 보유 금액보다 큽니다.' });
 
     // 기부 처리
     const userdata = await User.GetUser(user.id);
@@ -30,5 +30,5 @@ module.exports.command = async (client, interaction, user) => {
     userdata.donation += amount;
     await userdata.apply();
 
-    return reply(interaction, { content: `기부가 완료되었습니다. 기부 금액: ${commaByThree(amount)}원` });
+    return await reply(interaction, { content: `기부가 완료되었습니다. 기부 금액: ${commaByThree(amount)}원` });
 }

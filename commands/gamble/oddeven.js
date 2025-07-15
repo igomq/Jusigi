@@ -14,8 +14,8 @@ const { MessageFlags, ButtonStyle} = require("discord-api-types/v10");
 
 module.exports.data = data
 module.exports.command = async (client, interaction, user) => {
-    if (!await User.isUserExists(user.id)) return replyEphemeral(interaction, '먼저 `/가입` 명령어로 가입해주세요.');
-    if (activities.get(`OE-${user.id}`)) return replyEphemeral(interaction, '이미 진행중인 베팅이 있습니다.');
+    if (!await User.isUserExists(user.id)) return await replyEphemeral(interaction, '먼저 `/가입` 명령어로 가입해주세요.');
+    if (activities.get(`OE-${user.id}`)) return await replyEphemeral(interaction, '이미 진행중인 베팅이 있습니다.');
     
     const amount = interaction.options.getInteger("금액");
     
@@ -24,9 +24,9 @@ module.exports.command = async (client, interaction, user) => {
 
     // const thisGame = casino.casino['홀짝'].played
 
-    if (amount <= 0) return replyEphemeral(interaction, '0보다 큰 올바른 금액을 입력해 주세요.');
-    else if (amount < 100000) return replyEphemeral(interaction, '최소 100,000<:jusigi_coin:1136308344999653427>를 베팅해야 합니다.');
-    else if (amount > userData.purse) return replyEphemeral(interaction, '보유 자산보다 더 베팅할 수 없습니다.');
+    if (amount <= 0) return await replyEphemeral(interaction, '0보다 큰 올바른 금액을 입력해 주세요.');
+    else if (amount < 100000) return await replyEphemeral(interaction, '최소 100,000<:jusigi_coin:1136308344999653427>를 베팅해야 합니다.');
+    else if (amount > userData.purse) return await replyEphemeral(interaction, '보유 자산보다 더 베팅할 수 없습니다.');
 
     const buttonRow = new ActionRowBuilder()
         .addComponents(

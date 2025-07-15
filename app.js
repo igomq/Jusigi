@@ -48,13 +48,13 @@
     require('./events/interactionCreate')(client)
 })()
 
-global.replyEphemeral = (interaction, option) => {
+global.replyEphemeral = async (interaction, option) => {
     const replyOption = option;
     replyOption.flags = replyOption.flags || 64; // MessageFlags.Ephemeral
 
-    interaction.reply(replyOption);
+    await interaction.reply(replyOption);
 }
-global.reply = (interaction, option) => interaction.reply(option);
+global.reply = async (interaction, option) => await interaction.reply(option);
 global.commaByThree = (number) => number.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",")
 
 const moment = require('moment');
