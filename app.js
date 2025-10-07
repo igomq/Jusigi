@@ -17,6 +17,7 @@
 
     global.client = client;
     global.activities = new Collection();
+    global.gameInfo = {};
 
     // Initialize
     require('./manager/RouteManager')

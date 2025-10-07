@@ -10,10 +10,16 @@ const User = require('../../models/User');
 module.exports.data = data
 module.exports.command = async (client, interaction, user) => {
     const ActiveActivities = activities.filter(activity => activity.user.id === interaction.user.id);
+    const ActiveGames = Object.keys(gameInfo).reduce((res, key) => {
+        if (key.endsWith(`-${interaction.user.id}`)) res.push(key);
+        return res;
+    })
+
     if (ActiveActivities.size === 0) return await replyEphemeral(interaction, { content: '진행중인 게임이 없습니다.' });
 
     const activityNames = ActiveActivities.map((value, key, collection) => key);
     activityNames.forEach(name => activities.delete(name));
+    ActiveGames.forEach(name => delete gameInfo[name]);
 
     await replyEphemeral(interaction, { content: `진행중인 게임을 모두 중지했습니다.` });
 }

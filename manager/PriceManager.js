@@ -84,8 +84,6 @@ require('dotenv').config({ path: join(__dirname, '..', '.env') });
 const OpenAI = require('openai');
 const {createGzip} = require("node:zlib");
 const openai = new OpenAI({
-    organization: 'org-obV9Q057NQYZNa7UINwNIhYF',
-    project: 'proj_eGkp1zyWEeDg7wbtZhJMlQ6o',
     apiKey: process.env.OPENAI_API_KEY
 });
 
@@ -114,102 +112,68 @@ const saveNewsHistory = async (newsData) => {
     await write(historyPath, JSON.stringify(newsHistory, null, 4));
     console.log(`뉴스 히스토리 저장: ${newsData.stock} (총 ${newsHistory.length}개)`);
 };
-const marketStabilization = (stockData) => {
-    const prices = [], stockNames = [];
 
-    // 시장 평균 계산
+const calculateMarketStats = (stockData) => {
+    const prices = [];
+    const stockNames = [];
     for (const stock in stockData) {
         if (!stockData[stock].history || stockData[stock].history.length === 0) continue;
         const currentPrice = stockData[stock].history.at(-1);
         prices.push(currentPrice);
         stockNames.push(stock);
     }
-
     const marketAverage = prices.reduce((sum, price) => sum + price, 0) / prices.length;
     const maxPrice = Math.max(...prices);
     const minPrice = Math.min(...prices);
     const priceRange = maxPrice - minPrice;
     const deviationRatio = priceRange / marketAverage;
+    return { marketAverage, maxPrice, minPrice, deviationRatio, prices, stockNames };
+};
+const applyMarketPressure = (stockData, marketAverage, direction, forceRange) => {
+    for (const stock of Object.keys(stockData)) {
+        if (!stockData[stock].history || stockData[stock].history.length === 0) continue;
+        const currentPrice = stockData[stock].history.at(-1);
+        const deviationFromAverage = currentPrice - marketAverage;
+        const deviationRatio = Math.abs(deviationFromAverage) / marketAverage;
+        const adjustmentForce = currentPrice * (forceRange.min + deviationRatio * (forceRange.max - forceRange.min));
+        const newPrice = Math.floor(direction === 'up' ? currentPrice + adjustmentForce : currentPrice - adjustmentForce);
+        const finalPrice = Math.max(newPrice, MIN_STOCK_THRESHOLD);
+        console.log(`${stock}: 시장 ${direction} 압력 (${currentPrice.toFixed(0)} → ${finalPrice.toFixed(0)})`);
+        if (stockData[stock].history.length >= MAX_DATA_SAVING) stockData[stock].history.shift();
+        stockData[stock].history.push(finalPrice);
+    }
+};
+const adjustDeviation = (stockData, marketAverage, deviationRatio, prices, stockNames) => {
+    if (deviationRatio <= MAX_DEVIATION_RATIO || marketAverage <= MARKET_AVERAGE_TARGET) return;
+    console.log(`편차 안정화 작동 - 편차율 ${(deviationRatio * 100).toFixed(1)}% → 조정 시작`);
+    for (let i = 0; i < stockNames.length; i++) {
+        const stock = stockNames[i];
+        const currentPrice = prices[i];
+        const deviationFromAverage = currentPrice - marketAverage;
+        const devRatio = Math.abs(deviationFromAverage) / marketAverage;
+        if (devRatio > 0.2) {
+            const adjustmentForce = currentPrice * STABILIZATION_FORCE * (devRatio * 2) * (currentPrice > marketAverage ? -1 : 1);
+            const newPrice = Math.floor(currentPrice + adjustmentForce);
+            const finalPrice = Math.max(MIN_STOCK_THRESHOLD, newPrice);
+            if (stockData[stock].history.length >= MAX_DATA_SAVING) stockData[stock].history.shift();
+            stockData[stock].history.push(finalPrice);
+        }
+    }
+};
 
+const marketStabilization = (stockData) => {
+    const { marketAverage, maxPrice, minPrice, deviationRatio, prices, stockNames } = calculateMarketStats(stockData);
     console.log(`시장 현황 - 평균: ${marketAverage.toFixed(0)}, 최고: ${maxPrice.toFixed(0)}, 최저: ${minPrice.toFixed(0)}, 편차율: ${(deviationRatio * 100).toFixed(1)}%`);
 
-    // 시장 평균이 너무 낮으면 전체적인 상승 압력 가하기
     if (marketAverage < MARKET_AVERAGE_TARGET * 0.95) {
         console.log(`시장 안정화 작동: 평균 가격 ${marketAverage.toFixed(2)} → 상승 압력 적용`);
-
-        for (const stock of Object.keys(stockData)) {
-            if (!stockData[stock].history || stockData[stock].history.length === 0) continue;
-
-            // 평균과의 차이에 따라 최소 0.5%부터 15%까지 증가하게 해줘
-            const currentPrice = stockData[stock].history.at(-1);
-            const deviationFromAverage = currentPrice - marketAverage;
-            const deviationRatio = Math.abs(deviationFromAverage) / marketAverage;
-            const adjustmentForce = currentPrice * (0.005 + deviationRatio * 0.15); // 0.5% ~ 15% 사이의 증가
-            const newPrice = Math.floor(currentPrice + adjustmentForce);
-            const stabilizationBoost = Math.max(newPrice, MIN_STOCK_THRESHOLD); // 최소 가격 보장
-
-            console.log(`${stock}: 시장 안정화 상승 (${currentPrice.toFixed(0)} → ${stabilizationBoost.toFixed(0)})`);
-
-            if (stockData[stock].history.length >= MAX_DATA_SAVING) stockData[stock].history.shift();
-            stockData[stock].history.push(stabilizationBoost);
-        }
+        applyMarketPressure(stockData, marketAverage, 'up', { min: 0.005, max: 0.15 });
     }
-
-    // 시장 평균이 너무 높으면 전체적인 하락 압력 가하기
     if (marketAverage > MARKET_AVERAGE_TARGET * 3) {
         console.log(`시장 안정화 작동: 평균 가격 ${marketAverage.toFixed(2)} → 하락 압력 적용`);
-
-        for (const stock of Object.keys(stockData)) {
-            if (!stockData[stock].history || stockData[stock].history.length === 0) continue;
-
-            const currentPrice = stockData[stock].history.at(-1);
-            const deviationFromAverage = currentPrice - marketAverage;
-            const deviationRatio = Math.abs(deviationFromAverage) / marketAverage;
-            const adjustmentForce = currentPrice * (0.05 + deviationRatio * 0.35); // 5% ~ 35% 사이의 감소
-            const newPrice = Math.floor(currentPrice - adjustmentForce);
-            const stabilizationBoost = Math.max(newPrice, MIN_STOCK_THRESHOLD); // 최소 가격 보장
-
-            console.log(`${stock}: 시장 안정화 하락 (${currentPrice.toFixed(0)} → ${stabilizationBoost.toFixed(0)})`);
-
-            if (stockData[stock].history.length >= MAX_DATA_SAVING) stockData[stock].history.shift();
-            stockData[stock].history.push(stabilizationBoost);
-        }
+        applyMarketPressure(stockData, marketAverage, 'down', { min: 0.05, max: 0.35 });
     }
-
-    if (deviationRatio > MAX_DEVIATION_RATIO && marketAverage > MARKET_AVERAGE_TARGET) {
-        console.log(`편차 안정화 작동 - 편차율 ${(deviationRatio * 100).toFixed(1)}% → 조정 시작`);
-
-        for (let i = 0; i < stockNames.length; i++) {
-            const stock = stockNames[i];
-            const currentPrice = prices[i];
-            const deviationFromAverage = currentPrice - marketAverage;
-            const deviationRatio = Math.abs(deviationFromAverage) / marketAverage;
-
-            // 편차가 20% 이상인 주식들을 조정
-            if (deviationRatio > 0.2) {
-                let adjustmentForce = 0;
-
-                if (currentPrice > marketAverage) {
-                    // 평균보다 높은 주식 → 하락 압력
-                    adjustmentForce = -currentPrice * STABILIZATION_FORCE * (deviationRatio * 2);
-                    console.log(`${stock}: 고가 조정 (${currentPrice.toFixed(0)} → ${adjustmentForce.toFixed(0)})`);
-                } else {
-                    // 평균보다 낮은 주식 → 상승 압력
-                    adjustmentForce = currentPrice * STABILIZATION_FORCE * (deviationRatio * 2);
-                    console.log(`${stock}: 저가 조정 (${currentPrice.toFixed(0)} → +${adjustmentForce.toFixed(0)})`);
-                }
-
-                const newPrice = Math.floor(currentPrice + adjustmentForce);
-                const finalPrice = Math.max(MIN_STOCK_THRESHOLD, newPrice); // 최소가 보장
-
-                if (stockData[stock].history.length >= MAX_DATA_SAVING) {
-                    stockData[stock].history.shift();
-                }
-                stockData[stock].history.push(finalPrice);
-            }
-        }
-    }
-
+    adjustDeviation(stockData, marketAverage, deviationRatio, prices, stockNames);
     return stockData;
 };
 
@@ -232,9 +196,10 @@ function read(path) {
 
 const queryBody = (stock) => {
     return {
-        model: "gpt-4.1-nano",
+        model: "gpt-5-nano",
+        reasoning_effort: "minimal",
         messages: [
-            { role: 'system', content: 'You are a journalist writing an article about the stock market.' },
+            { role: 'system', content: 'You are a journalist writing an article about the stock market.',  },
             { role: 'user', content: `Write four interesting news about the stock ${stock}. Each news should be assigned randomly to one of the four stages: "매우 긍정", "긍정", "부정", or "매우 부정".\n` +
                     'You can pick any stage multiple times, so all four pieces of news could be "긍정", or three could be "매우 부정" and one "매우 긍정", etc. MAKE SURE ALL 4^4 CASES ARE POSSIBLE.\n' +
                     'Write realistic, but concise titles and summaries.\n' +
@@ -303,7 +268,10 @@ module.exports = async () => {
 
                 if (shouldCreateNews) {
                     console.log(`API 요청 시작: ${newsStock}`);
+                    const startTime = Date.now();
                     const completion = await openai.chat.completions.create(queryBody(newsStock));
+                    const endTime = Date.now();
+                    console.log(`API 요청 완료: ${newsStock} (소요 시간: ${(endTime - startTime)}ms)`);
                     await write(newsFilePath, completion.choices[0].message.content);
                 }
 

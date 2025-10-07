@@ -23,13 +23,15 @@ module.exports.command = async (client, interaction, data) => {
     await wait(500);
 
     await originInteraction.deleteReply();
-    let content = '';
+    let content = '', multiplier = 1;
     if (result) {
-        content = `:tada: ${commaByThree(betting)}<:jusigi_coin:1136308344999653427>의 1.2배인 ${commaByThree(Math.floor(betting * 1.2))}<:jusigi_coin:1136308344999653427>를 획득했습니다!`
-        user.purse += Math.floor(betting * 1.2);
+        multiplier += Number((Math.random() * 0.31 + 0.20).toFixed(2));
+        content = `:tada: ${commaByThree(betting)}<:jusigi_coin:1136308344999653427>의 ${multiplier.toFixed(2)}배인 ${commaByThree(Math.floor(betting * multiplier))}<:jusigi_coin:1136308344999653427>를 획득했습니다!`
+        user.purse += Math.floor(betting * (multiplier - 1));
     } else {
-        content = `:sob: ${commaByThree(betting)}<:jusigi_coin:1136308344999653427>를 잃었습니다. 다음에 다시 도전해보세요!`
-        user.purse -= betting;
+        multiplier = Number((Math.random() * 0.41 + 0.40).toFixed(2));
+        content = `:sob: 베팅의 ${(multiplier * 100).toFixed(2)}%인 ${commaByThree(Math.floor(betting * multiplier))}<:jusigi_coin:1136308344999653427>를 잃었습니다. 다음에 다시 도전해보세요!`
+        user.purse -= betting * multiplier;
     }
     const res = casino.makeGame('홀짝', betting, result ? Math.floor(betting * 1.2) : -betting);
 

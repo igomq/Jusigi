@@ -1,12 +1,13 @@
 module.exports = (client) => {
     client.on('interactionCreate', async interaction => {
-        if (interaction.isButton()) {
+        if (interaction.isButton() || interaction.isModalSubmit()) {
             const data = JSON.parse(interaction.customId);
             if (data.userId === interaction.user.id) {
-                const button = client.buttonSet.get(data.name);
-                if (!button) return;
-                await button.command(client, interaction, data);
+                const action = client.actionSet.get(data.name);
+                if (!action) return;
+                await action.command(client, interaction, data);
             }
+            return;
         }
         if (!interaction.isCommand() || !interaction.isChatInputCommand()) return;
 

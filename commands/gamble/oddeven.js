@@ -15,7 +15,7 @@ const { MessageFlags, ButtonStyle} = require("discord-api-types/v10");
 module.exports.data = data
 module.exports.command = async (client, interaction, user) => {
     if (!await User.isUserExists(user.id)) return await replyEphemeral(interaction, '먼저 `/가입` 명령어로 가입해주세요.');
-    if (activities.get(`OE-${user.id}`)) return await replyEphemeral(interaction, '이미 진행중인 베팅이 있습니다.');
+    if (gameInfo[`OE-${user.id}`]) return await replyEphemeral(interaction, '이미 진행중인 베팅이 있습니다.');
     
     const amount = interaction.options.getInteger("금액");
     
@@ -60,7 +60,7 @@ module.exports.command = async (client, interaction, user) => {
         .setColor('#ff7f00')
         .addFields(
             { name: '정보', value: `\n베팅 금액: ${commaByThree(amount)}`, inline: true },
-            { name: '\u200b', value: `${commaByThree(Math.floor(amount * 1.2))}`, inline: true }
+            { name: '\u200b', value: `성공 시: ${commaByThree(Math.floor(amount * 1.2))}~${commaByThree(Math.floor(amount * 1.5))}`, inline: true }
         )
 
     await reply(interaction, { embeds: [Embed], components: [buttonRow] });

@@ -1,44 +1,44 @@
 [
     {
+        "stock": "빅제제약",
+        "sentiment": "매우 부정",
+        "title": "BigGen Pharma misses earnings guidance amid costs",
+        "summary": "Fiscal results come in below expectations as pandemic-era discounts unwind, triggering a sharp reevaluation of growth prospects.",
+        "createdAt": 1759817458874
+    },
+    {
         "stock": "경민엔터",
         "sentiment": "매우 긍정",
-        "title": "경민엔터, 신작 드라마로 글로벌 시장 공략 강화",
-        "summary": "경민엔터는 최신 드라마 시리즈를 통해 해외 시장에서 큰 성공을 거두며 실적이 급상승하고 있습니다.",
-        "createdAt": 1752593732707
-    },
-    {
-        "stock": "신규해운",
-        "sentiment": "긍정",
-        "title": "신규해운, 신규 계약 증가로 실적 기대감 고조",
-        "summary": "신규해운이 최근 대형 선박 수주 계약을 체결하며 향후 수익성 개선 기대를 받고 있다.",
-        "createdAt": 1752593725706
-    },
-    {
-        "stock": "곰큐항공",
-        "sentiment": "긍정",
-        "title": "신규 항공 노선 확장으로 시장 점유율 확대 기대",
-        "summary": "곰큐항공이 신규 노선 개설로 해외 시장에서의 입지를 강화하며 성장 기대를 모으고 있다.",
-        "createdAt": 1752593712563
+        "title": "경민엔터, 신작 라인업 호조로 1분기 실적 경신 기대",
+        "summary": "주가 상승세가 뚜렷한 가운데 경민엔터의 신작 라인업이 시장 기대를 자극하며 내년 매출 증가가 예상된다.",
+        "createdAt": 1759817448762
     },
     {
         "stock": "빅제제약",
-        "sentiment": "매우 부정",
-        "title": "빅제제약, 재무 건전성 악화로 신뢰 저하",
-        "summary": "재무 상태가 악화됨에 따라 투자자들이 신뢰를 잃고 주가가 하락하는 모습이다.",
-        "createdAt": 1752593702481
+        "sentiment": "긍정",
+        "title": "BigGen Pharma expands market access in Asia",
+        "summary": "The company secures a major distribution deal in several Asian markets, boosting revenue visibility and investor sentiment.",
+        "createdAt": 1759817438696
     },
     {
-        "stock": "관광관광",
+        "stock": "파랑전자",
+        "sentiment": "부정",
+        "title": "일부 공급망 이슈와 경쟁 심화로 성장률 둔화 우려",
+        "summary": "글로벌 공급망 재편과 원자재 가격 상승이 단기 이익에 부담을 주고 있으며, 업계 경쟁 심화로 마진 축소 가능성이 제기된다. 시장 변동성 확대 우려도 남아 있다.",
+        "createdAt": 1759817428614
+    },
+    {
+        "stock": "빅제제약",
         "sentiment": "매우 긍정",
-        "title": "관광관광 주가, 글로벌 여행 수요 증가로 급등",
-        "summary": "전 세계 여행 수요 회복세에 힘입어 관광관광의 주가가 크게 상승하며 투자자들의 관심이 몰리고 있다.",
-        "createdAt": 1752593692410
+        "title": "BigGen Pharma announces breakthrough in R&D milestone",
+        "summary": "BigGen Pharma reports a promising phase 2 result for its blockbuster candidate, signaling potential accelerated approval and upside for investors.",
+        "createdAt": 1759817420942
     },
     {
-        "stock": "곰큐항공",
+        "stock": "파랑전자",
         "sentiment": "매우 부정",
-        "title": "곰큐항공, 연료비 급등으로 수익성 악화 우려",
-        "summary": "전 세계 유가 상승으로 연료비가 급증하면서 곰큐항공의 수익성에 타격이 우려되고 있다.",
-        "createdAt": 1752593611242
+        "title": "투자자 경계, 파랑전자 실적 경고 신호 포착",
+        "summary": "분기 실적이 시장 기대에 미치지 못하는 구간이 관측되며 수요 불확실성과 기술 경쟁력 약화에 대한 우려가 커졌다. 단기간 주가 하락 가능성이 높아 보인다.",
+        "createdAt": 1759817408450
     }
 ]
