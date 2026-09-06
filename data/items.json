@@ -1,0 +1,5 @@
+[
+  {"id":"hacker","name":"천재 해커의 해킹툴","type":"consumable","effect":"credit","baseRate":0,"price":10000000},
+  {"id":"positive","name":"긍정메타","type":"passive","effect":"loss","baseRate":15000000,"price":2000000},
+  {"id":"information","name":"정보의 왕","type":"passive","effect":"profit","baseRate":10000000,"price":3000000}
+]

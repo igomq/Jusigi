@@ -8,8 +8,9 @@ function format(result) {
     for(const [key,value] of Object.entries(result)) {
         if(value===null) {if(key==='dueAt')lines.push('상환기한: 미설정');continue;}
         if(key==='rate') {lines.push(`일 이율: ${Number(value)/1000000}%`);continue;}
+        if(key==='activated') {lines.push(`효과: ${value?'성공':'실패 (사용 횟수 소비)'}`);continue;}
         if(key==='bankRates') {lines.push(`대출 일 이율 ${value.loan/1000000}% · 보통예금 일 이율 ${value.savings/1000000}% · 정기예금 일 이율 (${value.term/1000000} × 기간²)% / 상한 ${value.cap/1000000}%`);continue;}
-        if(key==='benefits') {lines.push(`예금 이익세 ${value.tax/1000000}% · 주식 수수료 감면 ${100-value.fee/1000000}% · 아이템 효과 ${value.item/1000000}%${value.gamble?` · 도박 한도 ${money(value.gamble)}시기`:''}${value.item===0?' · 아이템 강화 불가':''} · 명세상 미니게임 드롭 보너스 ${value.dropBonus}% (드롭 미출시)`);continue;}
+        if(key==='benefits') {lines.push(`예금 이익세 ${value.tax/1000000}% · 주식 수수료 감면 ${100-value.fee/1000000}% · 아이템 효과 ${value.item/1000000}%${value.gamble?` · 도박 한도 ${money(value.gamble)}시기`:''}${value.item===0?' · 아이템 강화 불가':''} · 게임 성공 드롭 보너스 ${value.dropBonus}%p`);continue;}
         if(key==='outcome') {lines.push(`결과: ${(value.numbers||[]).join(' · ')}`);continue;}
         if(key==='holdings') {for(const h of value)lines.push(`${h.symbol}: ${money(h.quantity)}주 · 평균원가 ${(Number(h.total_cost)/Number(h.quantity)).toFixed(2)} · 현재가 ${money(h.price)}`);continue;}
         if(key==='loans') {for(const l of value)lines.push(`대출 #${l.id}: ${money(l.current)}시기 · 일 ${l.rate/1000000}% · 기한 ${l.due_at||'미설정'}`);continue;}
@@ -22,7 +23,7 @@ function format(result) {
     return lines.join('\n')||'완료되었습니다.';
 }
 async function respond(interaction,result) {
-    if(result?.kind?.startsWith('legacy_'))return respondGame(interaction,result);
+    if(result?.kind?.startsWith('legacy_')||result?.kind?.startsWith('minigame_'))return respondGame(interaction,result);
     const content=typeof result==='string'?result:format(result);
     const payload=content.length<=1900?{content}:{content:'상세 내역을 첨부했습니다.',files:[{attachment:Buffer.from(content),name:'jusigi.txt'}]};
     payload.allowedMentions={parse:[]};
@@ -36,6 +37,8 @@ async function respondGame(interaction,result) {
     for(let i=0;i<buttons.length;i+=5)components.push(new ActionRowBuilder().addComponents(...buttons.slice(i,i+5).map(b=>new ButtonBuilder().setCustomId(b.customId).setLabel(b.label).setStyle({primary:ButtonStyle.Primary,danger:ButtonStyle.Danger,success:ButtonStyle.Success}[b.style]||ButtonStyle.Primary))));
     let content=result.message||'게임을 처리했습니다.';
     if(result.attempts!=null)content+=`\n남은 기회: ${result.attempts}`;
+    if(result.dropChance!=null)content+=`\n성공 시 패시브 획득 확률: ${Math.round(result.dropChance*100)}%`;
+    if(result.itemDrop)content+=`\n아이템 획득: ${result.itemDrop.name} (${result.itemDrop.grade}) · 보유번호 ${result.itemDrop.inventoryId}`;
     if(result.net!=null)content+=`\n순손익: ${money(result.net)}시기 · 세금 ${money(result.tax)}시기`;
     if(result.balance!=null)content+=`\n잔액: ${money(result.balance)}시기`;
     const payload={content,components,allowedMentions:{parse:[]}};

@@ -18,9 +18,9 @@
 
 | 실행 | 결과 |
 |---|---|
-| `npm test` | 4개 테스트 파일 PASS. 내부 사례 21개: 계산 9, 캐시 2, 기존 퀴즈 5, command/PNG 5 |
-| `node test/integration/economy.test.js` (전용 로컬 MySQL 8.4, `*_test` DB) | 13개 금융/시장 시나리오 PASS. Node 집계는 상위 테스트 포함 14 PASS |
-| `npm run db:init` (Azure MySQL 8.4.9, TLS) | 001_economy.sql, 002_legacy_games.sql 및 seed 적용 |
+| `npm test` | 5개 테스트 파일 PASS. 내부 사례 25개: 계산 9, 캐시 2, 기존 퀴즈 5, command/PNG 6, 출시 규칙 3 |
+| `node test/integration/economy.test.js` (전용 로컬 MySQL 8.4, `*_test` DB) | 17개 금융/시장/미니게임 시나리오 PASS. Node 집계는 상위 테스트 포함 18 PASS |
+| `npm run db:init` (Azure MySQL 8.4.9, TLS) | 001~004 migration 및 정식 아이템 seed 적용 |
 | `npm run db:smoke` (실제 Azure MySQL/Redis) | commit 후 재조회, 중복 기부, rollback, 탈퇴/재가입, 시장 조회 PASS; Redis TLS SET/GET/DELETE PASS |
 | `npm audit` | 의존성 업데이트 후 0 vulnerabilities |
 | `git diff --check` | PASS |
@@ -33,12 +33,13 @@ Smoke test는 합성 계정을 만들고 검증 후 그 계정과 요청만 삭�
 
 | 시스템 | 평가 | 범위/남은 결정 |
 |---|---|---|
-| 은행 | PARTIAL | 명시된 계산·다중 플랜·추가대출·거래 원자성 완료. 상환기한 일수는 원문에 없어 운영 설정 미지정 |
-| 신용등급 | PARTIAL | 조건/강등/효과/상승요청 구현 및 테스트 완료. 기한 미지정 대출은 연체 판정하지 않음. 미출시 미니게임 드롭 보너스는 규칙 값만 정의 |
+| 은행 | PASS | 기본 7일 만기 및 기존 무기한 대출 7일 유예 보정 포함 |
+| 신용등급 | PASS | 연체/상승/강등 및 실제 미니게임 드롭 보너스 연결 |
 | 주식 | PASS | 가격/뉴스 주기·수량/원가·수수료·효과·DB 영속성 |
 | 도박 | PASS | 홀짝/슬롯, 게임별 cooldown, 퀵패스, 세금·한도·이력. 기존 퀴즈도 정상화 |
-| 아이템 | PARTIAL | 11등급/확률/강화/소모/패시브 효과 구현. 예시 아이템 출시 및 가격은 원문에 없어 비활성 seed |
-| 상점 | PARTIAL | 소모/패시브/영구 패스 구매 구현. 명세 가격이 있는 퀵패스는 판매 가능. 예시 아이템 출시가격 미정 |
+| 아이템 | PASS | 세 아이템 정식 출시, 해킹툴 확률형 신용 효과, 패시브 드롭 |
+| 상점 | PASS | 3개 아이템과 퀵패스 가격 확정·실제 판매 |
+| 미니게임 | PASS | 계산/기억 신규 게임, 보상/쿨타임/종료/드롭 원자성 |
 | 파산/재가입 | PASS | 원자적 초기화·계정 보존·재가입 우회 방지 |
 | DB persistence | PASS | Azure migration/seed/smoke 완료. 시장/게임 runtime state가 DB에 저장됨 |
 
@@ -47,6 +48,8 @@ Smoke test는 합성 계정을 만들고 검증 후 그 계정과 요청만 삭�
 - 사용자 요청에 따라 Discord 봇을 로그인/구동하거나 실제 서버에 명령을 등록하지 않았다. TOKEN/APPLICATION_ID 설정 후 `commands:deploy`, `start`가 필요하다.
 - OpenAI 실제 뉴스·퀴즈 호출은 키가 없어 실행하지 않았다. 응답 검증과 실패 시 금융 변경 방지 경로는 구현했다.
 - 샌드박스에서 Fontconfig 캐시 디렉터리 쓰기 경고가 있었지만 PNG 렌더링/시그니처 검증은 통과했다.
-- 대출기한, 예시 아이템 판매가격/출시, 정수형 아이템 효과의 버림 등 해석은 대조표에 공개했다. 임의의 판매가격/연체 일수/새 미니게임을 추가하지 않았다.
+- 사용자 후속 위임에 따라 대출기한·출시가격·해킹툴 반감·새 미니게임을 [출시 결정](launch-decisions.md)으로 확정했다. 화면 촬영 방지와 장기 게임 밸런스는 보장 범위가 아니다.
 - 동적 이력과 감사 기록의 장기 archive 정책은 운영 규모에 맞게 결정해야 한다. Redis 연결 단절 시 DB fallback을 유지하고 프로세스 재시작 때 재연결한다.
 - Luna Max로 기존 퀴즈 작업을 분담했으나 실행 연결이 중단되어 최종 통합·수정·검증은 주 작업 스레드에서 수행했다. Terra는 사용하지 않았다.
+
+후속 검증은 무기한 만기 보정의 유예·기존 계약 보존, 출시 가격/해킹툴 현금 역전 방지, 드롭 중복 방지 및 실패 rollback, 기억게임 숨김/만료/성공, 중지·파산 후 쿨타임 보존, 미니게임/도박 이력 분리를 포함한다.

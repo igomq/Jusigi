@@ -8,7 +8,7 @@ const {connectCache}=require('../services/cache');
 async function smoke() {
     const id='99999999999999999'+Date.now();
     const prefix=`smoke-${crypto.randomUUID()}`;let serial=0;
-    const economy=new Economy();
+    const economy=new Economy({random:()=>0});
     const run=(operation,args={})=>economy.execute(id,`${prefix}-${++serial}`,operation,args);
     let cache;
     try {
@@ -24,6 +24,11 @@ async function smoke() {
         finally {db.release();}
         assert.equal((await repo.one(getPool(),'SELECT balance FROM users WHERE id=?',[id])).balance,'89000');
         await run('withdraw');await run('signup');assert.equal((await run('snapshot')).balance,'70000');
+        const shop=await run('shop');assert.equal(shop.items.length,3);
+        const game=await run('minigameStart',{game:'arithmetic'});
+        const reward=await run('minigameAnswer',{session:game.session,answer:'2'});
+        assert.equal(reward.balance,'75000');assert(reward.itemDrop);
+        console.info('Launched shop, minigame reward and persisted item drop PASS');
         cache=await connectCache();
         if(cache.client?.isReady) {
             const key=`jusigi:smoke:${prefix}`;await cache.set(key,{ok:true},10);assert.deepEqual(await cache.get(key),{ok:true});await cache.client.del(key);
@@ -36,7 +41,7 @@ async function smoke() {
         try {
             await db.beginTransaction();
             // Only the synthetic account created by this invocation is removed.
-            for(const table of ['games','inventory','entitlements','gambling_history','casino_state','stock_trades','holdings','term_deposits','savings','loans','credit_history','economic_events'])await db.execute(`DELETE FROM ${table} WHERE user_id=?`,[id]);
+            for(const table of ['minigame_sessions','games','inventory','entitlements','gambling_history','casino_state','stock_trades','holdings','term_deposits','savings','loans','credit_history','economic_events'])await db.execute(`DELETE FROM ${table} WHERE user_id=?`,[id]);
             await db.execute('DELETE FROM users WHERE id=?',[id]);await db.execute('DELETE FROM requests WHERE user_id=?',[id]);await db.commit();
         } catch(error) {await db.rollback();throw error;} finally {db.release();}
         await cache?.close();await close();

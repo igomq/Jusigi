@@ -255,8 +255,9 @@ async function settle(ctx, row, gross, outcome) {
     const balance = balanceOf(ctx.user);
     ctx.user.balance = balance + bet;
     const {tax,net}=await ctx.recordGamble(row.type, bet, gross, outcome);
+    const itemDrop=outcome.outcome==='win'?await ctx.awardDrop(row.type):null;
     await deleteGame(ctx, row);
-    return { bet, gross, tax, net, payout: bet + net };
+    return { bet, gross, tax, net, payout: bet + net, itemDrop };
 }
 
 function fiveAskState(row) {
@@ -323,6 +324,7 @@ async function legacyStart(ctx, args = {}) {
         game,
         session,
         bet,
+        dropChance: require('../domain/rules').dropChance(game,ctx.user.credit),
         message: game === 'fiveask'
             ? '다섯고개 게임을 시작했습니다. 입력하기 버튼을 눌러주세요.'
             : '넌센스 퀴즈를 시작했습니다. 답변 버튼을 눌러주세요.',
@@ -437,6 +439,7 @@ async function legacyStop(ctx, args = {}) {
         const state = row.type === 'fiveask' ? fiveAskState(row) : nonsenseState(row);
         stopped.push(await stopGame(ctx, row, state));
     }
+    if(!requestedGame&&!session)stopped.push(...(await ctx.stopMinigames()).stopped);
     return {
         kind: 'legacy_stopped',
         stopped,

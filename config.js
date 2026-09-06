@@ -15,7 +15,7 @@ module.exports = {
         timezone: 'Z', supportBigNumbers: true, bigNumberStrings: true, connectionLimit: 10,
         connectTimeout: 10000, waitForConnections: true, queueLimit: 100 },
     redis: { host: process.env.REDIS_HOST, port: positive('REDIS_PORT', 10000), password: process.env.REDIS_ACCESS_KEY },
-    loanTermDays: positive('LOAN_TERM_DAYS', null), interval: positive('STOCK_UPDATE_INTERVAL_MS', 300000),
+    loanTermDays: positive('LOAN_TERM_DAYS', 7), interval: positive('STOCK_UPDATE_INTERVAL_MS', 300000),
     token: process.env.TOKEN, applicationId: process.env.APPLICATION_ID,
     openai: { apiKey: process.env.OPENAI_API_KEY, organization: process.env.OPENAI_ORGANIZATION || undefined,
         project: process.env.OPENAI_PROJECT || undefined, model: process.env.OPENAI_MODEL || 'gpt-5-nano' }

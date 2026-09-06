@@ -26,6 +26,9 @@ function upgradeCost(grade) { check(grade >= 0 && grade < 10, '최고 등급입�
 function upgradeResult(grade, roll) { return roll < UPGRADE[grade] / 100 ? grade + 1 : grade + 1 <= 4 ? grade : Math.max(0, grade - 1); }
 function acquisitionGrade(roll) { let sum = 0; return [15,40,25,15,5].findIndex(p => (sum += p) > roll * 100); }
 function itemRate(base, grade, credit) { return Math.floor(base * (100 + BONUS[grade]) / 100 * CREDIT[credit].item / 100000000); }
+const GAME_DROP_PERCENT = { fiveask: 10, nonsense: 5, arithmetic: 10, memory: 15 };
+function dropChance(game, credit) { return Object.hasOwn(GAME_DROP_PERCENT,game) ? (GAME_DROP_PERCENT[game]+CREDIT[credit].dropBonus)/100 : 0; }
+function hackerSucceeds(grade, credit, roll) { return roll < Math.min(1,itemRate(100000000,grade,credit)/100000000); }
 function sell({ quantity, totalCost, held, price, credit, lossRate = 0, profitRate = 0 }) {
     const proceeds = quantity * price;
     const cost = quantity === held ? totalCost : totalCost * quantity / held;
@@ -47,4 +50,4 @@ function gamble(game, bet, result, choice) {
 function gamblingSettlement(gross) { const tax=gross>0n?floorRate(gross,10000000):0n;return {gross,tax,net:gross-tax}; }
 const PRICE_RANGES = { normal: [-300,300], '매우 긍정': [200,600], '긍정': [-100,400], '부정': [-400,100], '매우 부정': [-600,-200] };
 function nextPrice(price, sentiment, roll) { const [min,max] = PRICE_RANGES[sentiment || 'normal']; const bps = min + Math.floor(roll * (max-min+1)); const result = BigInt(price) * BigInt(10000+bps) / 10000n; return result < 1n ? 1n : result; }
-module.exports = { gamblingSettlement, CREDIT, loanLimit, termRate, depositValue, debtValue, GRADES, BONUS, UPGRADE, upgradeCost, upgradeResult, acquisitionGrade, itemRate, sell, gamble, PRICE_RANGES, nextPrice };
+module.exports = { dropChance, hackerSucceeds, gamblingSettlement, CREDIT, loanLimit, termRate, depositValue, debtValue, GRADES, BONUS, UPGRADE, upgradeCost, upgradeResult, acquisitionGrade, itemRate, sell, gamble, PRICE_RANGES, nextPrice };
