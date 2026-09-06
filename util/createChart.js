@@ -3,9 +3,6 @@ const { Canvas } = require('skia-canvas');
 
 Chart.register( LinearScale, LineController, LineElement, PointElement, Legend );
 
-/** @type {number} */
-const MAX_SIZE_CHART = 250;
-
 /**
  * @typedef {Array<Object>} ChartData
  * @description 차트에 들어가는 데이터 형식
@@ -43,16 +40,11 @@ module.exports.createImage = async (labels, data) => {
         });
     }
 
-    // X축 숫자 배열 생성 (-250부터 0까지)
-    const numArr = new Array(MAX_SIZE_CHART).fill(0).map(
-        (v, i) => -1 * (i)
-    ).sort((a, b) => a-b);
-
     // 차트 설정
     const chart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: numArr,
+            labels,
             datasets: datasets
         },
         options: {
@@ -73,13 +65,14 @@ module.exports.createImage = async (labels, data) => {
             scales: {
                 x: {
                     type: 'linear',
+                    ticks: { callback: value => new Date(value).toISOString().slice(11,16) },
                     grid: {
                         tickLength: 0,
                         drawBorder: true
                     },
                     title: {
                         display: true,
-                        text: '시간(분)'
+                        text: '시간(UTC)'
                     }
                 },
                 y: {
@@ -103,8 +96,9 @@ module.exports.createImage = async (labels, data) => {
     });
 
     // 차트 렌더링
-    await chart.render();
-
-    // 이미지 버퍼로 변환
-    return await canvas.toBuffer('png');
+    try {
+        await chart.render();
+        return await canvas.toBuffer('png');
+    }
+    finally { chart.destroy(); }
 }

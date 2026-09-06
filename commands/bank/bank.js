@@ -1,124 +1,15 @@
-const { SlashCommandBuilder, EmbedBuilder} = require('discord.js');
-const { MessageFlags } = require("discord-api-types/v10");
-const data = new SlashCommandBuilder()
-    .setName('은행')
-    .setDescription('여러 가지 은행 업무를 수행합니다.');
-
-// Add subcommands for loan
-data.addSubcommand(subcommand =>
-    subcommand.setName('대출')
-        .setDescription('대출을 신청합니다.')
-        .addIntegerOption(option =>
-            option.setName('금액')
-                .setDescription('대출할 금액을 입력해주세요.')
-                .setRequired(true)
-        )
-);
-data.addSubcommand(subcommand =>
-    subcommand.setName('상환')
-        .setDescription('대출을 상환합니다.')
-        .addIntegerOption(option =>
-            option.setName('금액')
-                .setDescription('상환할 금액을 입력해주세요.')
-                .setRequired(true)
-        )
-);
-
-// Add subcommands for deposit
-data.addSubcommand(subcommand =>
-    subcommand.setName('예금')
-        .setDescription('예금을 신청합니다.')
-        .addIntegerOption(option =>
-            option.setName('금액')
-                .setDescription('예금할 금액을 입력해주세요.')
-                .setRequired(true)
-        )
-        .addStringOption(option =>
-            option.setName('종류')
-                .setDescription('예금 종류를 선택해주세요.')
-                .addChoices(
-                    { name: '보통예금', value: 'savings' },
-                    { name: '정기예금', value: 'deposit' }
-                )
-                .setRequired(true)
-        )
-        .addIntegerOption(option =>
-            option.setName('기간')
-                .setDescription('정기예금의 기간을 입력해주세요. (일 단위)')
-                .setRequired(false)
-        )
-);
-data.addSubcommand(subcommand =>
-    subcommand.setName('인출')
-        .setDescription('예금을 인출합니다.')
-        .addStringOption(option =>
-            option.setName('종류')
-                .setDescription('인출할 예금 종류를 선택해주세요.')
-                .addChoices(
-                    { name: '보통예금', value: 'savings' },
-                    { name: '정기예금', value: 'deposit' }
-                )
-                .setRequired(true)
-        )
-);
-data.addSubcommand(subcommand =>
-    subcommand.setName('정보')
-        .setDescription('은행 정보를 확인합니다.')
-)
-
-module.exports.data = data;
-module.exports.commandName = '은행';
-
-const User = require('../../models/User');
-const Stock = require("../../models/Stock");
-
-const {GetLoanInterestRateByUserCredit, GetLoanLimitWithCreditAndProperty} = require("./implementation/LoanMethods");
-const {GetSavingsInterestRateByUserCredit, GetDepositInterestRateByUserCreditAndDue,
-    GetDepositInterestRateLimitByUserCredit
-} = require("./implementation/DepositMethods");
-
-module.exports.command = async (client, interaction, user) => {
-    if (!await User.isUserExists(user.id))
-        return await interaction.reply({ content: '회원가입이 되어있지 않아 실행할 수 없습니다.\n> 재미있는 주시기 봇을 즐기려면 `/가입`명령어로 주시기 봇에 가입하세요!', flags: MessageFlags.Ephemeral });
-
-    const Loan = require('./implementation/LoanAction')
-    const Deposit = require('./implementation/DepositAction');
-
-    const subcommand = interaction.options.getSubcommand();
-    switch (subcommand) {
-        case '대출':
-            return await Loan(client, interaction, user);
-        case '상환':
-            return await Loan(client, interaction, user, true);
-        case '예금':
-            return await Deposit(client, interaction, user);
-        case '인출':
-            return await Deposit(client, interaction, user, true);
-        default: {
-            const userdata = await User.GetUser(user.id);
-            const userstock = await Stock.GetUser(user.id);
-
-            const LoanInterestRate = GetLoanInterestRateByUserCredit(userdata.credit);
-            const LoanInterestLimit = GetLoanLimitWithCreditAndProperty(userdata.credit, { stock: userstock.sum, purse: userdata.purse });
-            const SavingsInterestRate = GetSavingsInterestRateByUserCredit(userdata.credit);
-            const DepositInterestRate = GetDepositInterestRateByUserCreditAndDue(userdata.credit, 1);
-            const DepositInterestRateMax = GetDepositInterestRateLimitByUserCredit(userdata.credit);
-
-            const Embed = new EmbedBuilder()
-                .setColor('#ffb946')
-                .setTitle('은행 정보')
-                .setDescription('은행 이자율, 한도에 대한 정보를 확인합니다.')
-                .addFields(
-                    {name: '\u200b', value: '\u200b'},
-                    { name: '대출 이자율', value: `${LoanInterestRate}%`, inline: true },
-                    { name: '대출 한도', value: `${commaByThree(LoanInterestLimit)}시기`, inline: true },
-                    { name: '보통 예금 이자율', value: `${SavingsInterestRate}%` },
-                    { name: '정기 예금 이자율', value: `${DepositInterestRate} X (예금일수)²% (최대 ${DepositInterestRateMax}%)` }
-                )
-                .setFooter({ text: '주시기', iconURL: client.user.displayAvatarURL() })
-                .setTimestamp();
-
-            return await reply(interaction, { embeds: [Embed] });
-        }
-    }
-}
+const {SlashCommandBuilder}=require('discord.js');
+const {execute}=require('../../util/command');
+const data=new SlashCommandBuilder().setName('은행').setDescription('대출과 예금을 관리합니다.');
+for(const name of ['대출','상환'])data.addSubcommand(s=>s.setName(name).setDescription(name+'을 처리합니다.').addIntegerOption(o=>o.setName('금액').setDescription('시기').setMinValue(1).setRequired(true)));
+const type=o=>o.setName('종류').setDescription('예금 종류').setRequired(true).addChoices({name:'보통예금',value:'savings'},{name:'정기예금',value:'deposit'});
+data.addSubcommand(s=>s.setName('예금').setDescription('보통예금 입금 또는 새 정기예금 플랜').addStringOption(type).addIntegerOption(o=>o.setName('금액').setDescription('시기').setMinValue(1).setRequired(true)).addIntegerOption(o=>o.setName('기간').setDescription('정기예금 일수').setMinValue(1)));
+data.addSubcommand(s=>s.setName('인출').setDescription('보통예금 또는 만기 플랜 인출').addStringOption(type).addIntegerOption(o=>o.setName('금액').setDescription('보통예금 인출액, 생략하면 전액').setMinValue(1)).addStringOption(o=>o.setName('플랜').setDescription('정기예금 번호, 생략하면 만기 플랜 전체')));
+data.addSubcommand(s=>s.setName('정보').setDescription('계좌 현황과 추가 대출 한도를 확인합니다.'));
+module.exports={data,command:(c,i)=>{
+    const sub=i.options.getSubcommand(),amount=i.options.getInteger('금액');
+    if(sub==='대출'||sub==='상환')return execute(c,i,sub==='대출'?'loan':'repay',{amount});
+    if(sub==='정보')return execute(c,i,'snapshot',{bankInfo:true});
+    const savings=i.options.getString('종류')==='savings';
+    return execute(c,i,savings?(sub==='예금'?'savingsDeposit':'savingsWithdraw'):(sub==='예금'?'termOpen':'termWithdraw'),{amount,period:i.options.getInteger('기간'),planId:i.options.getString('플랜')});
+}};
