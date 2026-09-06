@@ -1,0 +1,42 @@
+[
+  {
+    "symbol": "곰큐항공",
+    "color": "rgb(35,216,15)",
+    "initialPrice": 15390
+  },
+  {
+    "symbol": "빅제제약",
+    "color": "rgb(172,153,13)",
+    "initialPrice": 32654
+  },
+  {
+    "symbol": "파랑전자",
+    "color": "rgb(226,23,69)",
+    "initialPrice": 45107
+  },
+  {
+    "symbol": "신규해운",
+    "color": "rgb(15,43,9)",
+    "initialPrice": 27993
+  },
+  {
+    "symbol": "크샨소프트",
+    "color": "rgb(67,105,77)",
+    "initialPrice": 44736
+  },
+  {
+    "symbol": "규태식품",
+    "color": "rgb(21,54,139)",
+    "initialPrice": 43529
+  },
+  {
+    "symbol": "경민엔터",
+    "color": "rgb(30,178,248)",
+    "initialPrice": 33841
+  },
+  {
+    "symbol": "관광관광",
+    "color": "rgb(250,164,96)",
+    "initialPrice": 38728
+  }
+]
