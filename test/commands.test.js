@@ -12,7 +12,7 @@ function interaction(name,values={}) {
     };
 }
 test('all command schemas load without login/API and retain existing names',async()=>{
-    const commands=await loadCommands();assert.equal(commands.size,18);
+    const commands=await loadCommands();assert.equal(commands.size,20);
     for(const command of commands.values())assert(command.data.toJSON().name);
     for(const name of ['다섯고개','넌센스','홀짝','중지','은행','신용등급','차트','주가표','거래','탈퇴'])assert(commands.has(name));
 });
@@ -40,4 +40,11 @@ test('legacy UI renders choices and split rows, no raw state/answer exposed',asy
 test('chart exports PNG with actual timestamp axis without Discord login',async()=>{
     const png=await createImage(['곰큐항공'],[{label:'곰큐항공',color:'#123456',data:[{x:1700000000000,y:100},{x:1700000300000,y:102}]}]);
     assert.equal(png.subarray(1,4).toString(),'PNG');
+});
+test('new minigame buttons enforce actor and modal routing',async()=>{
+    const bad=interaction('');bad.isChatInputCommand=()=>false;bad.isButton=()=>true;bad.customId='mg:999:session:answer';
+    await handle({},bad);assert.match(bad.replies[0].content,/본인/);
+    const own=interaction('');own.isChatInputCommand=()=>false;own.isButton=()=>true;own.customId=`mg:${own.user.id}:550e8400-e29b-41d4-a716-446655440000:answer`;
+    own.showModal=async modal=>{const data=modal.toJSON();assert(data.custom_id.length<=100);assert.equal(data.components[0].components[0].custom_id,'answer');};
+    await handle({},own);
 });

@@ -10,8 +10,8 @@ async function seed() {
             await db.execute('INSERT IGNORE INTO stock_history(symbol,tick,price,created_at) VALUES (?,0,?,?)', [stock.symbol,stock.initialPrice,now]);
         }
         await db.execute('INSERT IGNORE INTO market_state(id,last_update_at,next_update_at,interval_ms) VALUES (1,?,?,?)', [now,new Date(+now+config.interval),config.interval]);
-        for (const row of [ ['hacker','천재 해커의 해킹툴','consumable','credit',0], ['positive','긍정메타','passive','loss',15000000], ['information','정보의 왕','passive','profit',10000000] ]) {
-            await db.execute('INSERT IGNORE INTO item_definitions(id,name,type,effect,base_rate) VALUES (?,?,?,?,?)', row);
+        for (const item of require('../data/items.json')) {
+            await db.execute('INSERT IGNORE INTO item_definitions(id,name,type,effect,base_rate,price,released) VALUES (?,?,?,?,?,?,TRUE)', [item.id,item.name,item.type,item.effect,item.baseRate,item.price]);
         }
     });
 }

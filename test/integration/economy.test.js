@@ -21,7 +21,8 @@ test('real MySQL economy regressions',async t=>{
         assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.equal((await row(id)).balance,'30000');
     });
     await t.test('loan additional tranches, daily compound, credit snapshot and partial repayment clock',async()=>{
-        const id=await user(1000000);await run(id,'loan',{amount:100000});
+        const id=await user(1000000);const issued=await run(id,'loan',{amount:100000});
+        assert.equal(+new Date(issued.dueAt),+time+7*DAY);
         await assert.rejects(run(id,'loan',{amount:1}),DomainError);
         time=new Date(+time+DAY);await repo.rows(getPool(),'UPDATE users SET credit=1 WHERE id=?',[id]);
         await run(id,'loan',{amount:100000});
@@ -87,6 +88,18 @@ test('real MySQL economy regressions',async t=>{
         await repo.rows(getPool(),'UPDATE loans SET due_at=? WHERE user_id=?',[new Date(+time-3*DAY-1),id]);await run(id,'snapshot');assert.equal((await row(id)).credit,3);
         await run(id,'snapshot');assert.equal((await row(id)).credit,4);
     });
+    await t.test('deadline migration backfills null with grace and preserves existing deadlines',async()=>{
+        const id=await user();const db=await getPool().getConnection();
+        try {
+            await db.beginTransaction();
+            await db.execute('INSERT INTO loans(user_id,principal,balance,rate,opened_at,accrued_at,due_at) VALUES (?,1,1,3000000,?,?,NULL)',[id,new Date('2020-01-01'),new Date('2020-01-01')]);
+            const fixed=new Date('2030-01-01');await db.execute('INSERT INTO loans(user_id,principal,balance,rate,opened_at,accrued_at,due_at) VALUES (?,1,1,1000000,?,?,?)',[id,time,time,fixed]);
+            const sql=require('node:fs').readFileSync(require('node:path').join(__dirname,'../../db/migrations/003_launch_rules.sql'),'utf8');
+            for(const statement of sql.split(';').filter(s=>s.trim()))await db.query(statement);
+            const [loans]=await db.execute('SELECT rate,due_at,TIMESTAMPDIFF(SECOND,UTC_TIMESTAMP(3),due_at) AS remaining FROM loans WHERE user_id=? ORDER BY id',[id]);
+            assert(Number(loans[0].remaining)>=604790);assert.equal(loans[0].rate,3000000);assert.equal(+loans[1].due_at,+fixed);
+        } finally {await db.rollback();db.release();}
+    });
     await t.test('gamble caps/cooldown/quickpass/tax and concurrent requests',async()=>{
         const id=await user(20000000);await repo.rows(getPool(),'UPDATE users SET credit=3 WHERE id=?',[id]);await assert.rejects(run(id,'gamble',{game:'slots',amount:500001}),DomainError);
         await repo.rows(getPool(),'UPDATE users SET credit=4 WHERE id=?',[id]);await assert.rejects(run(id,'gamble',{game:'slots',amount:100001}),DomainError);
@@ -98,24 +111,22 @@ test('real MySQL economy regressions',async t=>{
     });
     await t.test('item purchase, upgrade, usage, effect credit and lifecycle',async()=>{
         const id=await user(50000000);
-        await repo.rows(getPool(),"UPDATE item_definitions SET released=TRUE,price=1000 WHERE id IN ('positive','hacker')");
-        try {
+        {
             const purchase=await run(id,'buy',{item:'positive'});assert.equal(purchase.grade,'AWKWARD');
             await run(id,'upgradeItem',{inventoryId:purchase.inventoryId});
             await repo.rows(getPool(),'UPDATE users SET credit=4 WHERE id=?',[id]);await assert.rejects(run(id,'upgradeItem',{inventoryId:purchase.inventoryId}),DomainError);
             await repo.rows(getPool(),'UPDATE users SET credit=2 WHERE id=?',[id]);const hacker=await run(id,'buy',{item:'hacker'});
             await assert.rejects(run(id,'upgradeItem',{inventoryId:hacker.inventoryId}),DomainError);
-            await assert.rejects(run(id,'useItem',{inventoryId:hacker.inventoryId}),DomainError);
-            await repo.rows(getPool(),'UPDATE inventory SET grade=1 WHERE id=?',[hacker.inventoryId]);
             await run(id,'useItem',{inventoryId:hacker.inventoryId});assert.equal((await row(id)).credit,1);
             await assert.rejects(run(id,'useItem',{inventoryId:hacker.inventoryId}),DomainError);
             const symbol='곰큐항공';await repo.rows(getPool(),'UPDATE stock_prices SET price=100 WHERE symbol=?',[symbol]);await run(id,'trade',{side:'buy',symbol,quantity:'100'});await repo.rows(getPool(),'UPDATE stock_prices SET price=50 WHERE symbol=?',[symbol]);const sale=await run(id,'trade',{side:'sell',symbol,quantity:'100'});assert.equal(sale.itemEffect,'750');assert.equal(sale.fee,'0');
-        } finally {await repo.rows(getPool(),"UPDATE item_definitions SET released=FALSE,price=NULL WHERE id IN ('positive','hacker')");}
+        }
     });
     await t.test('legacy session escrow, restart, stop and duplicate final settlement',async()=>{
         const id=await user(1000000);const start=await run(id,'legacyStart',{game:'fiveask',bet:100000});assert.equal((await row(id)).balance,'900000');
         const restarted=new Economy({clock:()=>time,random:()=>0});await restarted.execute(id,request(),'legacyAction',{session:start.session,action:'input'});
         const key=request();const a=await restarted.execute(id,key,'legacyAction',{session:start.session,action:'guess',guess:'1'});const b=await restarted.execute(id,key,'legacyAction',{session:start.session,action:'guess',guess:'1'});assert.deepEqual(a,b);assert.equal((await row(id)).balance,'1810000');
+        assert(a.itemDrop);assert.equal((await repo.rows(getPool(),'SELECT id FROM inventory WHERE user_id=?',[id])).length,1);
         await assert.rejects(run(id,'legacyAction',{session:start.session,action:'guess',guess:'1'}),DomainError);
     });
     await t.test('active gambling blocks credit upgrade and empty stop does not reset activity',async()=>{
@@ -125,6 +136,46 @@ test('real MySQL economy regressions',async t=>{
         await run(id,'legacyStart',{game:'fiveask',bet:100000});
         assert.equal((await run(id,'snapshot')).netAssets,'1000000');
         await assert.rejects(run(id,'upgradeCredit'),DomainError);
+    });
+    await t.test('launched catalog, hacker fractional success/failure and no cash arbitrage',async()=>{
+        const id=await user(50000000),shop=await run(id,'shop');
+        assert.deepEqual(shop.items.map(i=>i.id).sort(),['hacker','information','positive']);
+        const item=await run(id,'buy',{item:'hacker'});
+        await repo.rows(getPool(),'UPDATE users SET credit=3 WHERE id=?',[id]);
+        const fail=new Economy({clock:()=>time,random:()=>.999});
+        const result=await fail.execute(id,request(),'useItem',{inventoryId:item.inventoryId});assert.equal(result.activated,false);assert.equal(result.credit,3);
+        await assert.rejects(run(id,'useItem',{inventoryId:item.inventoryId}),DomainError);
+        const second=await run(id,'buy',{item:'hacker'});await repo.rows(getPool(),'UPDATE users SET credit=4 WHERE id=?',[id]);
+        await assert.rejects(run(id,'useItem',{inventoryId:second.inventoryId}),DomainError);
+        assert(await repo.one(getPool(),'SELECT id FROM inventory WHERE id=?',[second.inventoryId]));
+        await repo.rows(getPool(),'UPDATE users SET credit=3 WHERE id=?',[id]);assert.equal((await run(id,'useItem',{inventoryId:second.inventoryId})).credit,2);
+        await repo.rows(getPool(),'UPDATE users SET credit=1 WHERE id=?',[id]);
+        const before=BigInt((await row(id)).balance);const third=await run(id,'buy',{item:'hacker'});await run(id,'useItem',{inventoryId:third.inventoryId});assert(BigInt((await row(id)).balance)<before);
+    });
+    await t.test('new minigame rewards/drop atomicity, cooldown, replay and no gambling history',async()=>{
+        const id=await user(),start=await run(id,'minigameStart',{game:'arithmetic'});
+        const key=request();const both=await Promise.all([run(id,'minigameAnswer',{session:start.session,answer:'2'},key),run(id,'minigameAnswer',{session:start.session,answer:'2'},key)]);
+        assert.deepEqual(...both);assert.equal(both[0].balance,'105000');assert(both[0].itemDrop);
+        assert.equal((await repo.rows(getPool(),'SELECT id FROM inventory WHERE user_id=?',[id])).length,1);
+        assert.equal((await repo.rows(getPool(),'SELECT id FROM gambling_history WHERE user_id=?',[id])).length,0);
+        await assert.rejects(run(id,'minigameAnswer',{session:start.session,answer:'2'}),DomainError);
+        await assert.rejects(run(id,'minigameStart',{game:'arithmetic'}),DomainError);
+        time=new Date(+time+300000);const next=await run(id,'minigameStart',{game:'arithmetic'});
+        const broken=new Economy({clock:()=>time,random:()=>0,transact:fn=>transaction(db=>fn({execute:async(sql,p)=>{if(sql.startsWith('INSERT INTO inventory'))throw Error('drop failure');return db.execute(sql,p);}}))});
+        await assert.rejects(broken.execute(id,request(),'minigameAnswer',{session:next.session,answer:'2'}));
+        assert.equal((await row(id)).balance,'105000');assert.equal((await repo.one(getPool(),'SELECT status FROM minigame_sessions WHERE session_id=?',[next.session])).status,'active');
+        await run(id,'minigameAnswer',{session:next.session,answer:'3'});assert.equal((await row(id)).balance,'105000');
+    });
+    await t.test('memory hidden phase, expiry, stop and bankruptcy preserve cooldown',async()=>{
+        const id=await user(),start=await run(id,'minigameStart',{game:'memory'});
+        await assert.rejects(run(id,'minigameAnswer',{session:start.session,answer:'00000'}),DomainError);
+        const hide=await run(id,'minigameHide',{session:start.session});assert.equal(hide.view.description,'숫자가 숨겨졌습니다.');assert(!Object.hasOwn(hide,'answer'));
+        time=new Date(+time+60000);const expired=await run(id,'minigameAnswer',{session:start.session,answer:'00000'});assert.equal(expired.correct,false);assert.equal(expired.balance,'100000');
+        time=new Date(+time+240000);const next=await run(id,'minigameStart',{game:'memory'});await run(id,'legacyStop');
+        await assert.rejects(run(id,'minigameAnswer',{session:next.session,answer:'00000'}),DomainError);await assert.rejects(run(id,'minigameStart',{game:'memory'}),DomainError);
+        const other=await run(id,'minigameStart',{game:'arithmetic'});await run(id,'bankrupt');
+        await assert.rejects(run(id,'minigameAnswer',{session:other.session,answer:'2'}),DomainError);await assert.rejects(run(id,'minigameStart',{game:'arithmetic'}),DomainError);
+        time=new Date(+time+300000);const final=await run(id,'minigameStart',{game:'memory'});await run(id,'minigameHide',{session:final.session});assert.equal((await run(id,'minigameAnswer',{session:final.session,answer:'00000'})).balance,'77000');
     });
     await t.test('market durable ticks, six updates/news and concurrency lock',async()=>{
         const state=await repo.one(getPool(),'SELECT * FROM market_state WHERE id=1');time=new Date(+new Date(state.next_update_at)+1);

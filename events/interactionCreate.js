@@ -6,6 +6,7 @@ async function handle(client,interaction) {
             const command=client.routes.get(interaction.commandName);
             if(command)await command.command(client,interaction,interaction.user);
         } else if(interaction.isButton()||interaction.isModalSubmit()) {
+            if(interaction.customId.startsWith('mg:'))return await require('../routes/MiniGameButton').handle(client,interaction);
             if(interaction.customId.startsWith('lg:')) {
                 const games=require('../services/legacy-games');
                 const parsed=games.parseCustomId(interaction.customId);

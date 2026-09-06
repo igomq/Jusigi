@@ -64,6 +64,8 @@ function context({ balance = 2000000n, credit = 2, now = '2026-09-07T00:00:00.00
         user,
         now,
         records,
+        async awardDrop() { return null; },
+        async stopMinigames() { return {stopped:[]}; },
         async checkGamble(game, bet) {
             assert.equal(typeof bet, 'bigint');
             assert.ok(user.balance >= bet);

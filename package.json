@@ -25,7 +25,7 @@
     "javascript"
   ],
   "author": "GomQ",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "engines": {
     "node": ">=22.12.0"
   }

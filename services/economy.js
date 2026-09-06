@@ -31,10 +31,12 @@ class Economy {
             const ctx={db,user,now,requestId,random:this.random};
             ctx.checkGamble=(game,bet)=>checkGamble(ctx,game,bet);
             ctx.recordGamble=(game,bet,gross,outcome)=>recordGamble(ctx,game,bet,gross,outcome);
+            ctx.awardDrop=game=>require('./items').awardDrop(ctx,game);
+            ctx.stopMinigames=()=>require('./minigames').minigameStop(ctx);
             const result=await handlers[operation](ctx,args);
             const activity=!noActivity.has(operation)
                 && (operation!=='legacyAction'||result.kind==='legacy_settled')
-                && (operation!=='legacyStop'||result.stopped.length>0);
+                && (!['legacyStop','minigameStop'].includes(operation)||result.stopped.length>0);
             if(activity) user.economic_at=now;
             if(!lowered && operation!=='signup' && operation!=='bankrupt' && operation!=='withdraw') await credit.downgrade(db,user,now,{inactivity:false});
             check(user.balance>=0n&&user.balance<=MAX,'잔액이 허용 범위를 벗어났습니다.');
@@ -50,6 +52,7 @@ async function reset(ctx,withdraw=false) {
     const {db,user,now}=ctx;
     // Explicit list: user, donations, cooldown and perpetual items/entitlements are retained.
     for(const table of ['loans','savings','term_deposits','holdings','gambling_history','games']) await repo.rows(db,`DELETE FROM ${table} WHERE user_id=?`,[user.id]);
+    await repo.rows(db,"UPDATE minigame_sessions SET status='complete',finished_at=? WHERE user_id=? AND status='active'",[now,user.id]);
     await credit.change(db,user,3,withdraw?'withdrawal':'bankruptcy',now);
     user.balance=70000n; user.status=withdraw?'withdrawn':'active'; user.withdrawn_at=withdraw?now:null;
     return {message:withdraw?'탈퇴되었습니다. 재가입 시 신용3 / 70,000시기가 적용됩니다.':'신용3 / 70,000시기로 재조정되었습니다.'};
@@ -80,7 +83,7 @@ const handlers={
         check(!user.last_loan_at||+now-+new Date(user.last_loan_at)>=DAY,'대출은 24시간에 한 번 가능합니다.');
         const a=await credit.assets(db,user,now), available=rules.loanLimit(user.credit,user.balance,a.stock,a.debt);
         check(amount<=available,`추가 대출 가능 금액: ${available}시기`);
-        const due=config.loanTermDays?new Date(+now+config.loanTermDays*DAY):null;
+        const due=new Date(+now+config.loanTermDays*DAY);
         await repo.rows(db,'INSERT INTO loans(user_id,principal,balance,rate,opened_at,accrued_at,due_at) VALUES (?,?,?,?,?,?,?)',[user.id,amount.toString(),amount.toString(),rules.CREDIT[user.credit].loan,now,now,due]);
         user.balance+=amount;user.last_loan_at=now;return {borrowed:amount,rate:rules.CREDIT[user.credit].loan,dueAt:due};
     },
@@ -153,20 +156,19 @@ const handlers={
         await repo.rows(db,'UPDATE inventory SET grade=? WHERE id=?',[grade,item.id]);
         return {inventoryId:item.id,oldGrade:rules.GRADES[item.grade],grade:rules.GRADES[grade],cost};
     },
-    async useItem({db,user,now},args) {
+    async useItem({db,user,now,random},args) {
         check(user.credit!==4,'신용4등급에서는 아이템 효과가 비활성화됩니다.');
         const item=await findItem(db,user,args);check(item.type==='consumable','패시브는 보유 시 자동 적용됩니다.');
         check(item.effect==='credit','사용할 수 없는 효과입니다.');
         const effectRate=rules.itemRate(100000000,item.grade,user.credit);
+        const activated=user.credit===1 || rules.hackerSucceeds(item.grade,user.credit,random());
         if(user.credit===1) user.balance+=floorRate(5000000n,effectRate);
         else {
-            const steps=Number(floorRate(1n,effectRate));
-            check(steps>0,'등급 보너스와 신용 감면 적용 후 상승 효과가 0단계입니다. 아이템은 소비되지 않습니다.');
-            await credit.change(db,user,Math.max(1,user.credit-steps),'hacker_item',now);
+            if(activated)await credit.change(db,user,user.credit-1,'hacker_item',now);
         }
         if(item.uses_left===1) await repo.rows(db,'DELETE FROM inventory WHERE id=?',[item.id]);
         else await repo.rows(db,'UPDATE inventory SET uses_left=uses_left-1 WHERE id=?',[item.id]);
-        return {used:item.name,remaining:item.uses_left-1};
+        return {used:item.name,activated,remaining:item.uses_left-1};
     }
 };
 async function findItem(db,user,args) {
@@ -205,4 +207,5 @@ async function trade({db,user,now,requestId},args) {
     return {symbol:args.symbol,side:args.side,quantity,price,cost,fee,itemEffect:effect,realized};
 }
 Object.assign(handlers,require('./legacy-games').handlers);
+Object.assign(handlers,require('./minigames'));
 module.exports={Economy,handlers};

@@ -79,3 +79,19 @@
 | `util/query_data.js` | 호출처 제거 후 중복/죽은 구현 삭제. 금융 규칙은 공통 service/domain으로 이전 |
 | `util/query_db.js` | 호출처 제거 후 중복/죽은 구현 삭제. 금융 규칙은 공통 service/domain으로 이전 |
 | `util/registerSlashCommands.js` | 로그인 없는 명령 로더 및 명시적 배포 CLI |
+
+## 후속 출시 변경
+
+| 파일 | 변경 |
+|---|---|
+| data/items.json, db/seed.js | 세 아이템 출시 가격과 재현 가능한 seed |
+| db/migrations/003_launch_rules.sql | 기존 무기한 대출 유예 보정, 아이템 출시 |
+| db/migrations/004_minigames.sql | 무베팅 미니게임 영속 세션 |
+| config.js, .env.example | 기본 대출 만기 7일 |
+| domain/rules.js, services/items.js | 드롭 확률, 신용 보너스, 해킹툴 확률형 효과, 원자 지급 |
+| domain/minigames.js, services/minigames.js | 계산/기억 게임 생성·보상 snapshot·쿨타임·한 번 정산 |
+| services/economy.js, services/legacy-games.js | 드롭 transaction, 파산/중지 종료, 기존 게임 드롭 |
+| commands/games/arithmetic.js, commands/games/memory.js | 신규 slash commands |
+| routes/MiniGameButton.js, events/interactionCreate.js, util/command.js | 소유자 검증, 모달, 숫자 숨김, 드롭 결과 |
+| scripts/smoke.js, test/* | 출시/미니게임 검증과 테스트 계정 정리 |
+| docs/launch-decisions.md, README.md, docs/architecture.md, docs/spec-matrix.md, docs/verification.md | 확정 결정과 검증 결과 |

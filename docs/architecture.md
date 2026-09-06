@@ -34,9 +34,10 @@ commands는 옵션을 변환하고 결과를 표시한다. `Economy.execute`가 
 | entitlements | (user,type) PK, 영구 권리·구입시각 |
 | item_definitions | 종류 PK, 이름 UNIQUE, consumable/passive, 효과·기본율·사용횟수·판매가격·출시여부 |
 | inventory | 개별 보유 PK, user/종류 FK, 등급/남은횟수/획득시각. user/item index |
+| minigame_sessions | (user,type) PK, session UUID UNIQUE, 상태/문제/만료/쿨타임. 무베팅 미니게임은 casino 이력과 분리 |
 | games | (user,type) PK, session UUID UNIQUE, 베팅 예치금/진행 JSON/시각. 재시작 후 이어가기 가능 |
 
-금액/필수 시각은 NOT NULL이며 FK는 전부 RESTRICT한다. 자동 cascade로 경제 상태가 사라지지 않도록 초기화 목록을 transaction에서 명시한다. nullable 값은 미지정 만기·미보유 활성뉴스·미출시 가격·미발생 시각이다. 원금·보유수량·등급 등에는 CHECK 제약을 둔다.
+금액/필수 시각은 NOT NULL이며 FK는 전부 RESTRICT한다. 자동 cascade로 경제 상태가 사라지지 않도록 초기화 목록을 transaction에서 명시한다. nullable 값은 미보유 활성뉴스·관리자가 판매를 중단한 가격·미발생 시각이다. 대출 만기는 신규 발급과 기존 NULL 보정 모두 적용한다. 원금·보유수량·등급 등에는 CHECK 제약을 둔다.
 
 ## 계산과 파생 상태
 
@@ -55,3 +56,5 @@ commands는 옵션을 변환하고 결과를 표시한다. `Economy.execute`가 
 가격/뉴스 tick은 singleton lock 안에서 원자적으로 갱신한다. serial timer는 중첩 실행하지 않는다. 재시작하면 DB next_update_at을 기준으로 처리하며 누락된 시간에 가상 변동을 대량 생성하지 않는다. 안정화 강제 상승/하락과 로컬 JSON write는 제거했다.
 
 가격 이력·감사 기록은 자동 삭제하지 않는다. 규모가 커지면 운영 보존 정책에 맞춘 archive/partition 작업이 필요하다. Redis는 현재 연결이 끊기면 DB fallback을 사용하고 재시작 시 재연결한다.
+
+미니게임의 잔액 보상·패시브 드롭·세션 종료·요청 결과는 같은 계정 transaction에 포함된다. 획득 이력은 economic_events 결과의 itemDrop에 기록한다. 같은 요청은 결과를 재사용하고 다른 요청으로 종료된 세션을 재실행하면 거부한다.
